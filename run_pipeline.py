@@ -1,3 +1,4 @@
+import os
 import time
 
 import numpy as np
@@ -13,7 +14,22 @@ def run():
     t_start = time.time()
 
     print("\n[1/6] Loading datasets & applying data quality filters")
-    data_dir = "DataMatch_Аналитический_трек1/data"
+    candidates = [
+        "DataMatch_Аналитический_трек1/data",
+        "data",
+        "../DataMatch_Аналитический_трек1/data",
+        "../data",
+        ".",
+    ]
+    data_dir = next(
+        (c for c in candidates if os.path.exists(os.path.join(c, "events.parquet"))),
+        None,
+    )
+    if data_dir is None:
+        raise FileNotFoundError(
+            f"File (events.parquet) not found. Move it to one of the paths: {candidates}"
+        )
+    print(f"Data path used: {data_dir}")
 
     events_train = pd.read_parquet(f"{data_dir}/events.parquet")
     games_train = pd.read_csv(f"{data_dir}/games.csv")
@@ -139,7 +155,7 @@ def run():
     total_test_stints = sum(len(st) for st in test_stints_by_match.values())
     print(f"  Constructed {total_test_stints:,} test stints across 84 matches")
 
-    test_skater_ids = sorted(list(set(toi_test["player_id"])))
+    test_skater_ids = sorted(set(toi_test["player_id"]))
     print(
         f"Fitting RAPM across {len(test_skater_ids)} test skaters with 30 bootstrap resamples"
     )
@@ -195,7 +211,7 @@ def run():
 
     print("\n[6/6] Exporting test_ratings.csv")
 
-    all_test_players = sorted(list(set(player_seasons_test["player_id"])))
+    all_test_players = sorted(set(player_seasons_test["player_id"]))
     existing_pids = set(df_ratings["player_id"])
     missing_goalies = [p for p in all_test_players if p not in existing_pids]
 
